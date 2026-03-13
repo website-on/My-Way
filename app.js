@@ -1,18 +1,3 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyBxJe0_07DB6gVN6hEfIVkLUjGxQYa7LUY",
-    authDomain: "my-way-40443.firebaseapp.com",
-    projectId: "my-way-40443",
-    storageBucket: "my-way-40443.firebasestorage.app",
-    messagingSenderId: "211531844969",
-    appId: "1:211531844969:web:91993d7ca4129078f181f8"
-};
-
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// ⚠️ تمت إزالة enableIndexedDbPersistence عن قصد لأنها كانت تمنع ظهور المنتجات للجميع عند الخطأ.
-
 let cart = JSON.parse(localStorage.getItem('myway_cart')) || [];
 let isAdmin = false;
 let currentCategory = 'الكل';
@@ -29,48 +14,6 @@ const fallbackProducts = [
 
 let categories = JSON.parse(localStorage.getItem('myway_categories')) || defaultCategories;
 let products = JSON.parse(localStorage.getItem('myway_products')) || fallbackProducts;
-
-// Listen to categories from Firebase
-db.collection("store").doc("categories").onSnapshot((docSnap) => {
-    if (docSnap.exists) {
-        categories = docSnap.data().list;
-        localStorage.setItem('myway_categories', JSON.stringify(categories));
-    } else {
-        categories = defaultCategories;
-        db.collection("store").doc("categories").set({ list: categories }).catch(e => console.error(e));
-    }
-    renderCategories();
-    renderProducts();
-}, (error) => {
-    console.error("Firestore categories error:", error);
-    alert("⚠️ فشل الاتصال بقاعدة البيانات. يرجى التأكد من تعديل قواعد الحماية (Rules) في Firebase.");
-    categories = JSON.parse(localStorage.getItem('myway_categories')) || defaultCategories;
-    renderCategories();
-    renderProducts();
-});
-
-// Listen to products from Firebase
-db.collection("products").onSnapshot((snapshot) => {
-    // لا نمسح المنتجات الموجودة إذا كانت قاعدة البيانات فارغة تماماً
-    if (!snapshot.empty) {
-        const newProducts = [];
-        snapshot.forEach((docSnap) => {
-            newProducts.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        products = newProducts;
-        localStorage.setItem('myway_products', JSON.stringify(products));
-        renderProducts();
-    } else if (products.length === 0) {
-        // إذا كان فارغاً ولا نملك منتجات مسبقة
-        products = fallbackProducts;
-        renderProducts();
-    }
-}, (error) => {
-    console.error("Firestore products error:", error);
-    alert("⚠️ تنبيه: لا يمكن قراءة المنتجات. المنتجات تظهر فقط على جهازك الحالي لأن قاعدة بيانات Firebase مغلقة.");
-    products = JSON.parse(localStorage.getItem('myway_products')) || fallbackProducts;
-    renderProducts();
-});
 
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
@@ -89,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const saveBtn = document.querySelector('#product-modal .btn-primary');
 
         if (file) {
-            statusSpan.innerText = 'جاري رفع الصورة إلى الخادم... الرجاء الانتظار ⏳';
+            statusSpan.innerText = 'جاري رفع الصورة... الرجاء الانتظار ⏳';
             statusSpan.style.color = '#e3a008';
             saveBtn.disabled = true;
 
@@ -125,34 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Handle old local data migration to Firebase
-    const oldProducts = JSON.parse(localStorage.getItem('myway_products'));
-    if (oldProducts && oldProducts.length > 0 && !localStorage.getItem('migrated_to_firebase')) {
-        console.log("Migrating old products to Firebase...");
-        localStorage.setItem('migrated_to_firebase', 'true');
-
-        // Migrate categories
-        const oldCategories = JSON.parse(localStorage.getItem('myway_categories'));
-        if (oldCategories && oldCategories.length > 0) {
-            db.collection("store").doc("categories").set({ list: oldCategories }).catch(e => console.error(e));
-        }
-
-        // Migrate products
-        oldProducts.forEach(async (p) => {
-            try {
-                const docId = p.id ? String(p.id) : Date.now().toString();
-                await db.collection("products").doc(docId).set({
-                    name: p.name,
-                    price: p.price,
-                    category: p.category,
-                    image: p.image || ''
-                });
-                console.log("Migrated product:", p.name);
-            } catch (err) {
-                console.error("Failed to migrate product:", p.name, err);
-            }
-        });
-    }
+    // إزالة كود تحويل البيانات لفايربيس لأنه تم حذف فايربيس
 });
 
 function initNavigation() {
@@ -260,17 +176,10 @@ function saveCategory() {
     if (name && !categories.includes(name)) {
         const newCats = [...categories, name];
 
-        // تحديث محلي فوري
         categories = newCats;
         saveData();
         renderCategories();
         closeModals();
-
-        // إرسال للسيرفر في الخلفية
-        db.collection("store").doc("categories").set({ list: newCats }).catch(e => {
-            console.error(e);
-            alert('⚠️ لم يتم رفع التصنيف للسيرفر (لكنه حُفظ بجهازك). تأكد من اتصالك بالإنترنت وصلاحيات Firebase.');
-        });
     } else {
         alert('الرجاء إدخال اسم تصنيف صالح وغير مكرر');
     }
@@ -279,19 +188,11 @@ function saveCategory() {
 function deleteCategory(cat) {
     if (confirm(`هل أنت متأكد من حذف التصنيف "${cat}"؟ سيتم الاحتفاظ بالمنتجات للتحويل.`)) {
         const newCats = categories.filter(c => c !== cat);
-
-        // تحديث محلي فوري
         categories = newCats;
         if (currentCategory === cat) currentCategory = 'الكل';
         saveData();
         renderCategories();
         renderProducts();
-
-        // إرسال للسيرفر
-        db.collection("store").doc("categories").set({ list: newCats }).catch(e => {
-            console.error(e);
-            alert('⚠️ لم يتم الحذف من السيرفر (لكنه حُذف من جهازك).');
-        });
     }
 }
 
@@ -392,7 +293,7 @@ function saveProduct() {
     const productData = { name, price, category, image: productImageUrl };
     const docId = id ? String(id) : Date.now().toString();
 
-    // تحديث محلي صاروخي قبل أي انتظار
+    // تحديث محلي
     if (id) {
         const index = products.findIndex(p => p.id == id);
         if (index !== -1) {
@@ -405,29 +306,16 @@ function saveProduct() {
     renderProducts();
     closeModals();
     saveBtn.disabled = false;
-
-    // الحفظ في سيرفر Firebase
-    db.collection("products").doc(docId).set(productData).catch(error => {
-        console.error("Error saving product: ", error);
-        alert("⚠️ تم إضافة المنتج بجهازك، ولكن لم يتم رفعه للسيرفر بعد: " + error.message);
-    });
 }
 
 function deleteProduct(id) {
     if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
-        // حذف فوري من الشاشة
         products = products.filter(p => p.id != id);
         cart = cart.filter(item => item.product.id != id);
         saveData();
         renderProducts();
         renderCart();
         updateCartCount();
-
-        // أمر الحذف للسيرفر
-        db.collection("products").doc(id).delete().catch(error => {
-            console.error("Error deleting product: ", error);
-            alert("⚠️ لم يتم حذفه من السيرفر، ولكن حُذف من جهازك: " + error.message);
-        });
     }
 }
 
