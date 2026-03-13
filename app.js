@@ -51,13 +51,20 @@ db.collection("store").doc("categories").onSnapshot((docSnap) => {
 
 // Listen to products from Firebase
 db.collection("products").onSnapshot((snapshot) => {
-    const newProducts = [];
-    snapshot.forEach((docSnap) => {
-        newProducts.push({ id: docSnap.id, ...docSnap.data() });
-    });
-    products = newProducts;
-    localStorage.setItem('myway_products', JSON.stringify(products));
-    renderProducts();
+    // لا نمسح المنتجات الموجودة إذا كانت قاعدة البيانات فارغة تماماً
+    if (!snapshot.empty) {
+        const newProducts = [];
+        snapshot.forEach((docSnap) => {
+            newProducts.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        products = newProducts;
+        localStorage.setItem('myway_products', JSON.stringify(products));
+        renderProducts();
+    } else if (products.length === 0) {
+        // إذا كان فارغاً ولا نملك منتجات مسبقة
+        products = fallbackProducts;
+        renderProducts();
+    }
 }, (error) => {
     console.error("Firestore products error:", error);
     alert("⚠️ تنبيه: لا يمكن قراءة المنتجات. المنتجات تظهر فقط على جهازك الحالي لأن قاعدة بيانات Firebase مغلقة.");
