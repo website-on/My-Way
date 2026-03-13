@@ -1,14 +1,14 @@
 const firebaseConfig = {
-    apiKey: "AIzaSyBhSxi9Q4dwyvYAbR73pX1ZjFjR9KiPmH4",
-    authDomain: "my-way-14a2e.firebaseapp.com",
-    projectId: "my-way-14a2e",
-    storageBucket: "my-way-14a2e.firebasestorage.app",
-    messagingSenderId: "527679589439",
-    appId: "1:527679589439:web:1eed85a4a3edaa83f03c8a",
-    measurementId: "G-MBFXSJ67N2"
+    apiKey: "AIzaSyD2-hlylrbYAqQhhQYN0ouUAkLt2KsgSPU",
+    authDomain: "my-way-ce202.firebaseapp.com",
+    projectId: "my-way-ce202",
+    storageBucket: "my-way-ce202.firebasestorage.app",
+    messagingSenderId: "841318915486",
+    appId: "1:841318915486:web:3e7882b2eecb264e65ca8f",
+    measurementId: "G-H92P2T6NXC"
 };
 
-// Initialize Firebase using the Compat version
+// Initialize Firebase using Compat version
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -20,14 +20,9 @@ const WHATSAPP_NUMBER = '201068746284';
 
 // Fallback data
 const defaultCategories = ['أدوات تنظيف', 'عناية بالجسم', 'مستحضرات تجميل'];
-const fallbackProducts = [
-    { id: '1', name: 'منظف سوبر باور', price: 120, category: 'أدوات تنظيف', image: 'https://images.unsplash.com/photo-1584820927498-cafe2c1c6628?auto=format&fit=crop&q=80&w=300' },
-    { id: '2', name: 'شامبو العناية الفائقة', price: 85, category: 'عناية بالجسم', image: 'https://images.unsplash.com/photo-1631729371254-42c2892f0e6e?auto=format&fit=crop&q=80&w=300' },
-    { id: '3', name: 'عطر جولدن تاتش', price: 250, category: 'مستحضرات تجميل', image: 'https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&q=80&w=300' }
-];
 
 let categories = JSON.parse(localStorage.getItem('myway_categories')) || defaultCategories;
-let products = JSON.parse(localStorage.getItem('myway_products')) || fallbackProducts;
+let products = JSON.parse(localStorage.getItem('myway_products')) || [];
 
 // Listen to categories from Firebase
 db.collection("store").doc("categories").onSnapshot((docSnap) => {
@@ -49,21 +44,17 @@ db.collection("store").doc("categories").onSnapshot((docSnap) => {
 
 // Listen to products from Firebase
 db.collection("products").onSnapshot((snapshot) => {
-    if (!snapshot.empty) {
-        const newProducts = [];
-        snapshot.forEach((docSnap) => {
-            newProducts.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        products = newProducts;
-        localStorage.setItem('myway_products', JSON.stringify(products));
-        renderProducts();
-    } else if (products.length === 0) {
-        products = fallbackProducts;
-        renderProducts();
-    }
+    const newProducts = [];
+    snapshot.forEach((docSnap) => {
+        newProducts.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    products = newProducts;
+    localStorage.setItem('myway_products', JSON.stringify(products));
+    renderProducts();
 }, (error) => {
     console.error("Firestore products error:", error);
-    products = JSON.parse(localStorage.getItem('myway_products')) || fallbackProducts;
+    products = JSON.parse(localStorage.getItem('myway_products')) || [];
     renderProducts();
 });
 
@@ -115,9 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle old local data migration to Firebase using the NEW database config
     const oldProducts = JSON.parse(localStorage.getItem('myway_products'));
-    if (oldProducts && oldProducts.length > 0 && !localStorage.getItem('migrated_to_new_firebase')) {
+    if (oldProducts && oldProducts.length > 0 && !localStorage.getItem('migrated_to_new_firebase_2')) {
         console.log("Migrating local products to new Firebase...");
-        localStorage.setItem('migrated_to_new_firebase', 'true');
+        localStorage.setItem('migrated_to_new_firebase_2', 'true');
 
         const oldCategories = JSON.parse(localStorage.getItem('myway_categories'));
         if (oldCategories && oldCategories.length > 0) {
@@ -296,7 +287,7 @@ function renderProducts() {
     }
 
     if (filteredProducts.length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding: 20px; font-size: 1.2rem; color: #777; width: 100%;">لا توجد منتجات مطابقة لبحثك</p>';
+        container.innerHTML = '<p style="text-align:center; padding: 20px; font-size: 1.2rem; color: #777; width: 100%;">لا توجد منتجات حالياً هنا.</p>';
     }
 
     filteredProducts.forEach(product => {
